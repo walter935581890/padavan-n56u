@@ -1,4 +1,4 @@
-name: walter-padavan
+name: CI
 
 on:
   workflow_dispatch:
@@ -58,7 +58,7 @@ on:
         default: 'HC5661'
       plugins:
         type: string
-        description: '要集成的插件，逗号分隔，留空=一个都不带，all=全开。可选：adbyby aliddns pgyvpn ttyd zerotier'
+        description: '可选插件，逗号分隔：adbyby pgyvpn zerotier（ttyd 固定集成，不用填）。留空=只带 ttyd，all=三个全要'
         default: ''
       debug_enabled:
         description: '开 tmate 调试'
@@ -67,12 +67,13 @@ on:
   push:
     branches: [ master ]
 
-# 本仓库现在只有这 5 个插件：
+# 可选插件 3 个（下拉里只出现这些）：
 #   adbyby    广告过滤（/etc_ro 规则包 + /usr/bin/adbyby.sh）  开关 CONFIG_FIRMWARE_INCLUDE_ADBYBY
-#   aliddns   阿里云 DDNS（/usr/bin/aliddns.sh + /etc_ro/ddns_script.sh） 开关 CONFIG_FIRMWARE_INCLUDE_ALIDDNS
 #   pgyvpn    蒲公英异地组网（/usr/bin/pgyvpn.sh，来自 pgyvpn-ci.tar.gz） 开关 CONFIG_FIRMWARE_INCLUDE_PGYVPN
-#   ttyd      网页终端（源码树自带） 开关 CONFIG_FIRMWARE_INCLUDE_TTYD
 #   zerotier  ZeroTier 组网（预编译二进制 + /usr/bin/zerotier.sh） 开关 CONFIG_FIRMWARE_INCLUDE_ZEROTIER
+#
+# 固定集成（不在选择里，但每版固件一定有）：
+#   ttyd      网页终端（源码树自带） 开关 CONFIG_FIRMWARE_INCLUDE_TTYD=y
 
 jobs:
   build:
@@ -97,219 +98,35 @@ jobs:
             p7zip-full cpio fakeroot unzip xxd flex bison kmod libncurses5-dev shellcheck \
             || echo "::warning::apt 安装不完整，继续"
 
-      - name: Ensure HC5661 board support
+      - name: Verify HC5661 board support
         if: ${{ env.TNAME == 'HC5661' }}
-        env:
-          HC5661_PAYLOAD: |
-            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
         run: |
           cd trunk
-          if [ -f configs/boards/HC5661/board.h ] && grep -q 'BOARD_NUM_ETH_EPHY' configs/boards/HC5661/board.h \
-             && grep -q 'CONFIG_FIRMWARE_PRODUCT_ID="HC5661"' configs/templates/HC5661.config ; then
-            echo "仓库里已有 HC5661 板级文件，直接使用"
-          else
-            echo "仓库里缺少 HC5661 板级文件，用 workflow 内置的装上"
-            echo "$HC5661_PAYLOAD" | tr -d '\n' | base64 -d | tar xzf - -C .
+          for f in configs/boards/HC5661/board.h configs/boards/HC5661/board.mk \
+                   configs/boards/HC5661/kernel-3.4.x.config configs/templates/HC5661.config ; do
+            [ -f "$f" ] || { echo "::error::仓库里缺少 $f"; exit 1; }
+          done
+
+          grep -q 'BOARD_NUM_ETH_EPHY.*5' configs/boards/HC5661/board.h \
+            || { echo "::error::board.h 里 BOARD_NUM_ETH_EPHY 不是 5（1 WAN + 4 LAN）"; exit 1; }
+          grep -q '^CONFIG_RAETH_ESW_PORT_WAN=0' configs/boards/HC5661/kernel-3.4.x.config \
+            || { echo "::error::内核里 WAN 不是 P0"; exit 1; }
+          grep -q '^CONFIG_RAETH_ESW_PORT_LAN1=1' configs/boards/HC5661/kernel-3.4.x.config \
+            || { echo "::error::内核里 LAN1 不是 P1"; exit 1; }
+          grep -q '^# CONFIG_MT76X2_AP is not set' configs/boards/HC5661/kernel-3.4.x.config \
+            || { echo "::error::内核里 5G 没关掉"; exit 1; }
+          grep -q 'CONFIG_FIRMWARE_PRODUCT_ID="HC5661"' configs/templates/HC5661.config \
+            || { echo "::error::模板里 PRODUCT_ID 不是 HC5661"; exit 1; }
+          if grep -q 'WIFI5_DRIVER' configs/templates/HC5661.config ; then
+            echo "::error::模板里还有 5G 驱动"; exit 1
           fi
-          grep -E 'BOARD_PID|BOARD_NUM_ETH_EPHY' configs/boards/HC5661/board.h
-          grep -E 'ESW_PORT_WAN|ESW_PORT_LAN1|MT76X2_AP is not set' configs/boards/HC5661/kernel-3.4.x.config
-          if grep -q 'WIFI5_DRIVER' configs/templates/HC5661.config ; then echo '::error::模板里还有 5G 驱动'; exit 1 ; fi
-          echo '板级就位：EPHY=5 / WAN=P0 / LAN1-4=P1-P4 / 无 5G'
+
+          echo "==== HC5661 板级参数 ===="
+          grep -E 'BOARD_PID|BOARD_DESC|BOARD_NUM_ETH_EPHY|BOARD_HAS_5G_11AC|BOARD_GPIO_LED_(POWER|WAN)' configs/boards/HC5661/board.h
+          grep -E 'BOARD_HC5661|BOARD_NUM_USB_PORTS' configs/boards/HC5661/board.mk
+          grep -E '^CONFIG_RALINK_MT7620=|^CONFIG_MT7620_ASIC=|^CONFIG_RT2880_DRAM_128M=|^CONFIG_RAETH_ESW_PORT_(WAN|LAN1|LAN2|LAN3|LAN4)=' \
+            configs/boards/HC5661/kernel-3.4.x.config
+          echo '板级检查通过：EPHY=5 / WAN=P0 / LAN1-4=P1-P4 / 无 5G / 无 USB'
 
       - name: Unpack uploaded plugins and add build hooks
         run: |
@@ -327,7 +144,7 @@ jobs:
             grep -q "$1" trunk/user/Makefile || { echo "::error::钩子没写进 trunk/user/Makefile：$1"; exit 1; }
           }
 
-          for n in adbyby aliddns zerotier ; do
+          for n in adbyby zerotier ; do
             if [ -f "trunk/user/$n/Makefile" ] ; then
               echo "$n 已解包"
             else
@@ -338,6 +155,9 @@ jobs:
             fi
             chmod +x trunk/user/$n/*.sh 2>/dev/null || true
           done
+
+          [ -f trunk/user/ttyd/Makefile ] || { echo "::error::仓库里没有 trunk/user/ttyd，但 ttyd 必须集成"; exit 1; }
+          echo "ttyd 就位：trunk/user/ttyd/Makefile"
 
           if [ -f trunk/user/pgyvpn/Makefile ] ; then
             echo "pgyvpn 已注入"
@@ -353,13 +173,12 @@ jobs:
           fi
 
           hook CONFIG_FIRMWARE_INCLUDE_ADBYBY adbyby
-          hook CONFIG_FIRMWARE_INCLUDE_ALIDDNS aliddns
           hook CONFIG_FIRMWARE_INCLUDE_ZEROTIER zerotier
           hook CONFIG_FIRMWARE_INCLUDE_TTYD ttyd
           hook CONFIG_FIRMWARE_INCLUDE_PGYVPN pgyvpn
 
           echo "==== 插件目录 ===="
-          ls -l trunk/user/adbyby trunk/user/aliddns trunk/user/ttyd trunk/user/zerotier 2>/dev/null | head -30
+          ls -l trunk/user/adbyby trunk/user/ttyd trunk/user/zerotier 2>/dev/null | head -30
           du -sh trunk/user/pgyvpn 2>/dev/null || true
           echo "==== 编译钩子 ===="
           grep -nE 'INCLUDE_(ADBYBY|ALIDDNS|ZEROTIER|TTYD|PGYVPN)' trunk/user/Makefile
@@ -405,7 +224,13 @@ jobs:
           if [ ! -f "$TB" ] ; then echo "::error::型号模板不存在：$TB"; exit 1 ; fi
           mkdir -p ${images_dir}
 
-          AVAIL="adbyby aliddns pgyvpn ttyd zerotier"
+          AVAIL="adbyby pgyvpn zerotier"
+
+          # ttyd 固定集成：不管选什么都在
+          sed -i "/^CONFIG_FIRMWARE_INCLUDE_TTYD=/d" "$TB"
+          echo "CONFIG_FIRMWARE_INCLUDE_TTYD=y" >> "$TB"
+          echo "ttyd 固定开启（CONFIG_FIRMWARE_INCLUDE_TTYD=y，不受插件选择影响）"
+
           key() {
             case "$1" in
               pgyvpn) echo PGYVPN ;;
@@ -414,8 +239,9 @@ jobs:
           }
 
           if [ "$PLUGINS" = "all" ] ; then PLUGINS="$AVAIL" ; fi
+          if [ "$PLUGINS" = "none" ] ; then PLUGINS="" ; fi
 
-          echo "==== 1. 先把 5 个插件全关掉 ===="
+          echo "==== 1. 先把 3 个可选插件全关掉（ttyd 不动） ===="
           for p in $AVAIL ; do
             k=$(key $p)
             sed -i "/^CONFIG_FIRMWARE_INCLUDE_${k}=/d" "$TB"
@@ -425,7 +251,8 @@ jobs:
           echo "==== 2. 打开本次勾选的 ===="
           for p in $(echo "$PLUGINS" | tr ',' ' ') ; do
             [ -z "$p" ] && continue
-            case " $AVAIL " in *" $p "*) ;; *) echo "::error::插件名不正确：$p（可选：$AVAIL）"; exit 1 ;; esac
+            if [ "$p" = "ttyd" ] ; then echo "  = ttyd 已固定开启，无需填写"; continue ; fi
+            case " $AVAIL " in *" $p "*) ;; *) echo "::error::插件名不正确：$p（可选：$AVAIL，ttyd 固定集成）"; exit 1 ;; esac
             k=$(key $p)
             sed -i "/^CONFIG_FIRMWARE_INCLUDE_${k}=/d" "$TB"
             echo "CONFIG_FIRMWARE_INCLUDE_${k}=y" >> "$TB"
