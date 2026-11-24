@@ -128,6 +128,20 @@ jobs:
             configs/boards/HC5661/kernel-3.4.x.config
           echo '板级检查通过：EPHY=5 / WAN=P0 / LAN1-4=P1-P4 / 无 5G / 无 USB'
 
+          # 内核配置预演：CI 没有终端，silentoldconfig 一旦要交互就直接失败
+          K=linux-3.4.x
+          cp -rfL proprietary/rt_wifi/rtsoc/2.7.X.X/rt2860v2 \
+                  proprietary/rt_wifi/rtsoc/2.7.X.X/rt2860v2_ap \
+                  "$K/drivers/net/wireless/ralink/" 2>/dev/null || true
+          cp -f configs/boards/HC5661/kernel-3.4.x.config "$K/.config"
+          sed -i 's/^# CONFIG_RT_FIRST_IF_RT2860 is not set/CONFIG_RT_FIRST_IF_RT2860=y/; s/^CONFIG_RT_FIRST_IF_MT7620=y/# CONFIG_RT_FIRST_IF_MT7620 is not set/' "$K/.config"
+          if ! ( cd "$K" && timeout 90 env ARCH=mips make silentoldconfig </dev/null >/tmp/kconf.log 2>&1 ) ; then
+            echo "::error::内核配置和源码 Kconfig 对不上，构建时会卡在 silentoldconfig 交互提示"
+            tail -25 /tmp/kconf.log
+            exit 1
+          fi
+          echo '内核配置预演通过：silentoldconfig 无交互'
+
       - name: Unpack uploaded plugins and add build hooks
         run: |
           pick() {
