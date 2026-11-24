@@ -1,4 +1,4 @@
-name: CI
+name: walter-padavan
 
 on:
   workflow_dispatch:
