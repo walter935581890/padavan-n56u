@@ -113,8 +113,10 @@ jobs:
             || { echo "::error::内核里 WAN 不是 P0"; exit 1; }
           grep -q '^CONFIG_RAETH_ESW_PORT_LAN1=1' configs/boards/HC5661/kernel-3.4.x.config \
             || { echo "::error::内核里 LAN1 不是 P1"; exit 1; }
-          grep -q '^# CONFIG_MT76X2_AP is not set' configs/boards/HC5661/kernel-3.4.x.config \
-            || { echo "::error::内核里 5G 没关掉"; exit 1; }
+          if grep -q '^CONFIG_MT76X2_AP=y' configs/boards/HC5661/kernel-3.4.x.config \
+             || grep -q '^CONFIG_RT_FIRST_IF_RANGE_5GHZ=y' configs/boards/HC5661/kernel-3.4.x.config ; then
+            echo "::error::内核里 5G 没关掉（MT76X2_AP 或 RANGE_5GHZ 被打开）"; exit 1
+          fi
           grep -q 'CONFIG_FIRMWARE_PRODUCT_ID="HC5661"' configs/templates/HC5661.config \
             || { echo "::error::模板里 PRODUCT_ID 不是 HC5661"; exit 1; }
           if grep -q 'WIFI5_DRIVER' configs/templates/HC5661.config ; then
